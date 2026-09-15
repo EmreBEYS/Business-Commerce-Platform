@@ -1,6 +1,75 @@
-ode_modules/
+# ==========================================
+# Business Commerce Platform
+# ==========================================
+
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment / Secrets
 .env
-.DS_Store
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
 dist/
 build/
-*.log
+backend/dist/
+frontend/dist/
+
+# Test / Coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+
+# Runtime / Admin auth test files
+admin-cookie.txt
+*.cookie
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# IDE / Editors
+.vscode/
+.idea/
+*.iml
+
+# Vite
+.vite/
+
+# Cache
+.cache/
+.eslintcache
+
+# Local product images / scraped data
+# Uncomment later if these should NOT be tracked:
+# backend/uploads/
+# frontend/public/products/
+
+# PostgreSQL backups
+*.sql
+*.dump
+*.backup
