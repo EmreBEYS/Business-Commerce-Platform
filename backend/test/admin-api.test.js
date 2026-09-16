@@ -17,7 +17,7 @@ let databaseSnapshot;
 let categorySnapshot;
 
 before(async() => {
-    server = app.listen(0);
+    server = app.listen(0, "127.0.0.1");
     await new Promise((resolve) => server.once("listening", resolve));
 
     const address = server.address();
@@ -156,6 +156,32 @@ test("product listing safely handles SQL-like search text", async() => {
     assert.equal(response.status, 200);
     assert.equal(body.success, true);
     assert.ok(body.products.length <= 5);
+});
+
+test("public catalog supports search, sorting and pagination", async() => {
+    const params = new URLSearchParams({ q: "server", sort: "name-desc", page: "1", limit: "6" });
+    const response = await fetch(`${apiUrl}/api/products?${params}`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, "ok");
+    assert.ok(body.products.length <= 6);
+    assert.equal(body.pagination.page, 1);
+    assert.ok(Array.isArray(body.brands));
+});
+
+test("public catalog search handles Turkish dotted and dotless i", async() => {
+    const response = await fetch(`${apiUrl}/api/products?q=${encodeURIComponent("işlemci")}&limit=1`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, "ok");
+    assert.ok(body.pagination.total > 0);
+});
+
+test("public product detail validates ids", async() => {
+    const response = await fetch(`${apiUrl}/api/products/not-a-uuid`);
+    assert.equal(response.status, 400);
 });
 
 test("product update validates id and payload before querying", async() => {
