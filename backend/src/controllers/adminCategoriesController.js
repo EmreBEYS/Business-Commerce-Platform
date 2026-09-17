@@ -49,6 +49,14 @@ const validateCategory = (body, { partial = false } = {}) => {
 exports.getCategories = async(req, res) => {
     try {
         const result = await pool.query(`
+            WITH RECURSIVE category_descendants AS (
+                SELECT id AS ancestor_id, id AS descendant_id
+                FROM categories
+                UNION ALL
+                SELECT tree.ancestor_id, child.id
+                FROM category_descendants tree
+                JOIN categories child ON child.parent_id = tree.descendant_id
+            )
             SELECT
                 c.id,
                 c.name,
@@ -56,10 +64,13 @@ exports.getCategories = async(req, res) => {
                 c.path,
                 c.parent_id,
                 parent.name AS parent_name,
-                COUNT(p.id)::integer AS product_count
+                COUNT(DISTINCT direct_product.id)::integer AS direct_product_count,
+                COUNT(DISTINCT subtree_product.id)::integer AS product_count
             FROM categories c
             LEFT JOIN categories parent ON parent.id = c.parent_id
-            LEFT JOIN products p ON p.category_id = c.id
+            LEFT JOIN products direct_product ON direct_product.category_id = c.id
+            LEFT JOIN category_descendants tree ON tree.ancestor_id = c.id
+            LEFT JOIN products subtree_product ON subtree_product.category_id = tree.descendant_id
             GROUP BY c.id, parent.name
             ORDER BY c.path ASC
         `);

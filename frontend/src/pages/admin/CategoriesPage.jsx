@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-const API_URL = "http://localhost:8000";
+import { API_URL } from "../../lib/catalogApi";
 
 function CategoriesPage() {
   const [categories, setCategories] = useState([]);

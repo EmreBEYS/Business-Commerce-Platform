@@ -6,7 +6,8 @@
     "scripts": {
         "start": "node src/app.js",
         "dev": "nodemon src/app.js",
-        "test": "node --test"
+        "test": "node --test",
+        "images:sync:official": "node scripts/sync-official-product-images.js"
     },
     "keywords": [],
     "author": "",

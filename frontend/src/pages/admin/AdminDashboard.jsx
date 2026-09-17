@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { API_URL } from "../../lib/catalogApi";
 import "../../styles/admin.css";
 
-const API_URL = "http://localhost:8000";
 
 function AdminDashboard() {
   const [stats, setStats] = useState(null);

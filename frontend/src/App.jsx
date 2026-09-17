@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -10,6 +10,7 @@ import HomePage from "./pages/HomePage";
 import CatalogPage from "./pages/CatalogPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import "./styles/storefront.css";
+import "./styles/catalog.css";
 
 function App() {
   return (
@@ -17,6 +18,11 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/katalog" element={<CatalogPage />} />
+        <Route
+          path="/kategori/network-ekipmanlar"
+          element={<Navigate to="/kategori/network-ekipmanlari" replace />}
+        />
+        <Route path="/kategori/:categorySlug" element={<CatalogPage />} />
         <Route path="/urun/:id" element={<ProductDetailPage />} />
         <Route path="/admin/login" element={<AdminLogin />} />
 

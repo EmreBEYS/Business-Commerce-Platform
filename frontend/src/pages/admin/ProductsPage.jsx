@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-
-const API_URL = "http://localhost:8000";
+import { API_URL } from "../../lib/catalogApi";
 
 const stockLabel = (availability) => ({
   IN_STOCK: "Stokta",
@@ -362,8 +361,9 @@ function ProductsPage() {
             </label>
 
             <label>
-              Görsel URL
-              <input type="url" maxLength="2048" value={editing.imageUrl} onChange={(event) => setEditing({ ...editing, imageUrl: event.target.value })} />
+              Görsel URL veya Yerel Yol
+              <input type="text" maxLength="2048" placeholder="/product-images/urun.webp" value={editing.imageUrl} onChange={(event) => setEditing({ ...editing, imageUrl: event.target.value })} />
+              <small>Yerel görselleri public/product-images klasörüne ekleyip /product-images/dosya.webp biçiminde kullanın.</small>
             </label>
 
             <label>

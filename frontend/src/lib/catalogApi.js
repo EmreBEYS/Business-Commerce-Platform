@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 async function request(path) {
   const response = await fetch(`${API_URL}${path}`);
@@ -16,6 +16,7 @@ export function getProducts(filters = {}) {
 
 export function getProduct(id) { return request(`/api/products/${encodeURIComponent(id)}`); }
 export function getCategories() { return request("/api/categories"); }
+export function getCategoryBySlug(slug) { return request(`/api/categories/${encodeURIComponent(slug)}`); }
 export const WHATSAPP_URL = "https://wa.me/905446176144";
 export const COMPANY_CONTACT = {
   phoneDisplay: "0212 442 49 16",

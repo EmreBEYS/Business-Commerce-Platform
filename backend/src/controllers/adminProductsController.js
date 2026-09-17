@@ -75,8 +75,15 @@ const validateProductUpdate = (body) => {
         return "Görsel adresi en fazla 2048 karakter olmalıdır.";
     }
 
-    if (Object.hasOwn(body, "imageUrl") && body.imageUrl && !/^https?:\/\//i.test(body.imageUrl.trim())) {
-        return "Görsel adresi http veya https ile başlamalıdır.";
+    if (Object.hasOwn(body, "imageUrl") && body.imageUrl) {
+        const imageUrl = body.imageUrl.trim();
+        const isRemoteUrl = /^https?:\/\//i.test(imageUrl);
+        const isLocalPath = /^\/product-images\/[a-z0-9][a-z0-9._/-]*$/i.test(imageUrl) &&
+            !imageUrl.split("/").some((segment) => segment === "." || segment === "..");
+
+        if (!isRemoteUrl && !isLocalPath) {
+            return "Görsel adresi http(s) veya /product-images/ ile başlayan güvenli bir yerel yol olmalıdır.";
+        }
     }
 
     if (

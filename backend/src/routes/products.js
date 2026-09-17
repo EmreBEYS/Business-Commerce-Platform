@@ -26,7 +26,19 @@ router.get("/", async(req, res) => {
             conditions.push(`(${normalized("p.name")} LIKE ${normalizedParameter} OR ${normalized("p.brand")} LIKE ${normalizedParameter} OR ${normalized("p.category")} LIKE ${normalizedParameter} OR ${normalized("p.slug")} LIKE ${normalizedParameter})`);
         }
         if (brand) conditions.push(`p.brand ILIKE ${addValue(brand)}`);
-        if (categoryId) conditions.push(`p.category_id = ${addValue(categoryId)}`);
+        if (categoryId) {
+            const categoryParameter = addValue(categoryId);
+            conditions.push(`p.category_id IN (
+                WITH RECURSIVE category_tree AS (
+                    SELECT id FROM categories WHERE id = ${categoryParameter}
+                    UNION ALL
+                    SELECT child.id
+                    FROM categories child
+                    JOIN category_tree parent ON child.parent_id = parent.id
+                )
+                SELECT id FROM category_tree
+            )`);
+        }
 
         const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
         const sort = {
@@ -40,8 +52,10 @@ router.get("/", async(req, res) => {
         const [result, countResult, brandsResult] = await Promise.all([
             pool.query(`
                 SELECT p.id, p.name, p.slug, p.category, p.brand, p.description,
-                       p.image_url, p.availability, p.stock_quantity, p.category_id
+                       p.image_url, p.availability, p.stock_quantity, p.category_id,
+                       c.path AS category_path
                 FROM products p
+                LEFT JOIN categories c ON c.id = p.category_id
                 ${where}
                 ORDER BY ${sort}
                 LIMIT ${limitParameter} OFFSET ${offsetParameter}
@@ -76,10 +90,11 @@ router.get("/:id", async(req, res) => {
 
     try {
         const result = await pool.query(`
-            SELECT id, name, slug, category, brand, description, image_url,
-                   availability, stock_quantity, category_id
-            FROM products
-            WHERE id = $1
+            SELECT p.id, p.name, p.slug, p.category, p.brand, p.description, p.image_url,
+                   p.availability, p.stock_quantity, p.category_id, c.path AS category_path
+            FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            WHERE p.id = $1
         `, [req.params.id]);
 
         if (!result.rowCount) return res.status(404).json({ status: "error", message: "Ürün bulunamadı." });

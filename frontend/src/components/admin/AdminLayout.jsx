@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { API_URL } from "../../lib/catalogApi";
 import "../../styles/admin.css";
 
-const API_URL = "http://localhost:8000";
 
 function AdminLayout() {
   const navigate = useNavigate();

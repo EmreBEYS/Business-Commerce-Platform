@@ -1,0 +1,63 @@
+.filter-chips button {
+  border: 0;
+  border-radius: 20px;
+  padding: 7px 10px;
+  background: #edf3ff;
+  color: #1b5dd2;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.catalog-category-links {
+  display: grid;
+  margin: 20px 18px 4px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.catalog-category-links > b {
+  margin-bottom: 9px;
+  color: #617086;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
+.catalog-category-links > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-inline: -8px;
+  padding: 8px;
+  border-radius: 6px;
+  color: #4f6075;
+  font-size: 9px;
+}
+
+.catalog-category-links > a:hover,
+.catalog-category-links > a.active {
+  background: #edf3ff;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.catalog-category-links em {
+  color: #8a99aa;
+  font-size: 8px;
+  font-style: normal;
+}
+
+@media (max-width: 960px) {
+  .catalog-category-links {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin: 8px 6px;
+  }
+
+  .catalog-category-links > b { grid-column: 1 / -1; }
+}
+
+@media (max-width: 620px) {
+  .catalog-category-links { grid-template-columns: 1fr; }
+}

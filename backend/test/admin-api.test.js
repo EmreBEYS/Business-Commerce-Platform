@@ -170,6 +170,59 @@ test("public catalog supports search, sorting and pagination", async() => {
     assert.ok(Array.isArray(body.brands));
 });
 
+test("public categories expose direct and descendant product counts", async() => {
+    const response = await fetch(`${apiUrl}/api/categories`);
+    const body = await response.json();
+    const parent = body.categories.find((category) =>
+        category.parent_id === null && category.product_count > category.direct_product_count
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, "ok");
+    assert.ok(parent, "En az bir üst kategori alt kategori ürünlerini kapsamalı");
+
+    const detailResponse = await fetch(`${apiUrl}/api/categories/${parent.slug}`);
+    const detailBody = await detailResponse.json();
+    assert.equal(detailResponse.status, 200);
+    assert.equal(detailBody.category.id, parent.id);
+    assert.equal(detailBody.category.product_count, parent.product_count);
+});
+
+test("network catalog has its canonical route and descendant products", async() => {
+    const categoriesResponse = await fetch(`${apiUrl}/api/categories`);
+    const categoriesBody = await categoriesResponse.json();
+    const network = categoriesBody.categories.find((category) =>
+        category.parent_id === null && category.slug === "network-ekipmanlari"
+    );
+
+    assert.equal(categoriesResponse.status, 200);
+    assert.ok(network, "Network ana kategorisinin kalıcı adresi bulunmalı");
+    assert.ok(network.product_count > 0, "Network kategorisi alt kategori ürünlerini kapsamalı");
+
+    const productsResponse = await fetch(`${apiUrl}/api/products?categoryId=${network.id}&limit=5`);
+    const productsBody = await productsResponse.json();
+
+    assert.equal(productsResponse.status, 200);
+    assert.equal(productsBody.pagination.total, network.product_count);
+    assert.ok(productsBody.products.length > 0);
+    assert.ok(productsBody.products.every((product) => product.category_path.startsWith(network.path)));
+});
+
+test("parent category filter includes products assigned to descendants", async() => {
+    const categoriesResponse = await fetch(`${apiUrl}/api/categories`);
+    const categoriesBody = await categoriesResponse.json();
+    const parent = categoriesBody.categories.find((category) =>
+        category.parent_id === null && category.direct_product_count === 0 && category.product_count > 0
+    );
+    const response = await fetch(`${apiUrl}/api/products?categoryId=${parent.id}&limit=5`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.pagination.total, parent.product_count);
+    assert.ok(body.products.length > 0);
+    assert.ok(body.products.every((product) => product.category_path.startsWith(parent.path)));
+});
+
 test("public catalog search handles Turkish dotted and dotless i", async() => {
     const response = await fetch(`${apiUrl}/api/products?q=${encodeURIComponent("işlemci")}&limit=1`);
     const body = await response.json();
@@ -302,7 +355,10 @@ test("product create is compatible with the live PostgreSQL schema", async() => 
 
 test("product validation rejects unknown and unsafe values", () => {
     assert.match(validateProductUpdate({ sourceUrl: "https://example.com" }), /güncellenemez/);
-    assert.match(validateProductUpdate({ imageUrl: "javascript:alert(1)" }), /http veya https/);
+    assert.match(validateProductUpdate({ imageUrl: "javascript:alert(1)" }), /http\(s\)/);
+    assert.equal(validateProductUpdate({ imageUrl: "/product-images/dell-r750.webp" }), null);
+    assert.match(validateProductUpdate({ imageUrl: "/uploads/unsafe.svg" }), /product-images/);
+    assert.match(validateProductUpdate({ imageUrl: "/product-images/../secret" }), /product-images/);
     assert.match(validateProductUpdate({ name: " " }), /2 ile 400/);
     assert.equal(validateProductUpdate({ stockQuantity: 0 }), null);
     assert.match(validateProductCreate({ name: "Test" }), /zorunludur/);

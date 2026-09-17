@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/admin.css";
-
-const API_URL = "http://localhost:8000";
+import { API_URL } from "../../lib/catalogApi";
 
 function AdminLogin() {
   const navigate = useNavigate();

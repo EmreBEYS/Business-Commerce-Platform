@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-
-const API_URL = "http://localhost:8000";
+import { API_URL } from "../../lib/catalogApi";
 
 function ProtectedAdminRoute({ children }) {
   const [status, setStatus] = useState("loading");
