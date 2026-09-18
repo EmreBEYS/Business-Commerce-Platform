@@ -1,5 +1,7 @@
 const pool = require("../config/db");
 const { randomUUID } = require("node:crypto");
+const { cleanupUploadedFile } = require("../middleware/productImageUpload");
+const { removeManagedImage } = require("../utils/productImages");
 
 const UUID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -78,11 +80,12 @@ const validateProductUpdate = (body) => {
     if (Object.hasOwn(body, "imageUrl") && body.imageUrl) {
         const imageUrl = body.imageUrl.trim();
         const isRemoteUrl = /^https?:\/\//i.test(imageUrl);
-        const isLocalPath = /^\/product-images\/[a-z0-9][a-z0-9._/-]*$/i.test(imageUrl) &&
+        const isCatalogImage = /^\/product-images\/[a-z0-9][a-z0-9._/-]*$/i.test(imageUrl) &&
             !imageUrl.split("/").some((segment) => segment === "." || segment === "..");
+        const isManagedUpload = /^\/uploads\/products\/[0-9a-f-]{36}\.(?:jpg|png|webp|gif)$/i.test(imageUrl);
 
-        if (!isRemoteUrl && !isLocalPath) {
-            return "Görsel adresi http(s) veya /product-images/ ile başlayan güvenli bir yerel yol olmalıdır.";
+        if (!isRemoteUrl && !isCatalogImage && !isManagedUpload) {
+            return "Görsel adresi http(s) veya izin verilen güvenli bir yerel yol olmalıdır.";
         }
     }
 
@@ -120,6 +123,7 @@ exports.createProduct = async(req, res) => {
     const validationError = validateProductCreate(req.body);
 
     if (validationError) {
+        await cleanupUploadedFile(req);
         return res.status(400).json({ success: false, message: validationError });
     }
 
@@ -136,6 +140,7 @@ exports.createProduct = async(req, res) => {
 
         if (categoryResult.rowCount === 0) {
             await client.query("ROLLBACK");
+            await cleanupUploadedFile(req);
             return res.status(400).json({
                 success: false,
                 message: "Seçilen kategori bulunamadı.",
@@ -186,6 +191,7 @@ exports.createProduct = async(req, res) => {
         });
     } catch (error) {
         if (client) await client.query("ROLLBACK").catch(() => {});
+        await cleanupUploadedFile(req);
         console.error("Admin product create error:", error);
         return res.status(500).json({ success: false, message: "Ürün eklenemedi." });
     } finally {
@@ -287,6 +293,7 @@ exports.updateProduct = async(req, res) => {
     const { id } = req.params;
 
     if (!UUID_PATTERN.test(id)) {
+        await cleanupUploadedFile(req);
         return res.status(400).json({
             success: false,
             message: "Geçerli bir ürün kimliği gönderilmelidir.",
@@ -296,6 +303,7 @@ exports.updateProduct = async(req, res) => {
     const validationError = validateProductUpdate(req.body);
 
     if (validationError) {
+        await cleanupUploadedFile(req);
         return res.status(400).json({
             success: false,
             message: validationError,
@@ -308,6 +316,25 @@ exports.updateProduct = async(req, res) => {
         client = await pool.connect();
         await client.query("BEGIN");
 
+        const existingResult = await client.query(
+            `
+                SELECT p.image_url, c.name AS category_name
+                FROM products p
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE p.id = $1
+                FOR UPDATE OF p
+            `,
+            [id]
+        );
+
+        if (existingResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            await cleanupUploadedFile(req);
+            return res.status(404).json({ success: false, message: "Ürün bulunamadı." });
+        }
+
+        const previousImageUrl = existingResult.rows[0].image_url;
+
         let category = null;
 
         if (Object.hasOwn(req.body, "categoryId")) {
@@ -318,6 +345,7 @@ exports.updateProduct = async(req, res) => {
 
             if (categoryResult.rowCount === 0) {
                 await client.query("ROLLBACK");
+                await cleanupUploadedFile(req);
 
                 return res.status(400).json({
                     success: false,
@@ -377,18 +405,29 @@ exports.updateProduct = async(req, res) => {
 
         await client.query("COMMIT");
 
+        if (
+            Object.hasOwn(req.body, "imageUrl") &&
+            previousImageUrl &&
+            previousImageUrl !== result.rows[0].image_url
+        ) {
+            await removeManagedImage(previousImageUrl).catch((error) => {
+                console.error("Previous product image cleanup error:", error);
+            });
+        }
+
         return res.json({
             success: true,
             message: "Ürün güncellendi.",
             product: {
                 ...result.rows[0],
-                category_name: category ? category.name : undefined,
+                category_name: category ? category.name : existingResult.rows[0].category_name,
             },
         });
     } catch (error) {
         if (client) {
             await client.query("ROLLBACK").catch(() => {});
         }
+        await cleanupUploadedFile(req);
         console.error("Admin product update error:", error);
 
         return res.status(500).json({
@@ -399,6 +438,88 @@ exports.updateProduct = async(req, res) => {
         if (client) {
             client.release();
         }
+    }
+};
+
+exports.deleteProductImage = async(req, res) => {
+    const { id } = req.params;
+
+    if (!UUID_PATTERN.test(id)) {
+        return res.status(400).json({ success: false, message: "Geçerli bir ürün kimliği gönderilmelidir." });
+    }
+
+    let client;
+
+    try {
+        client = await pool.connect();
+        await client.query("BEGIN");
+
+        const existingResult = await client.query(
+            "SELECT image_url FROM products WHERE id = $1 FOR UPDATE",
+            [id]
+        );
+
+        if (existingResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ success: false, message: "Ürün bulunamadı." });
+        }
+
+        await client.query(
+            "UPDATE products SET image_url = NULL, updated_at = NOW() WHERE id = $1",
+            [id]
+        );
+        await client.query("COMMIT");
+
+        await removeManagedImage(existingResult.rows[0].image_url).catch((error) => {
+            console.error("Product image cleanup error:", error);
+        });
+
+        return res.json({ success: true, message: "Ürün görseli silindi." });
+    } catch (error) {
+        if (client) await client.query("ROLLBACK").catch(() => {});
+        console.error("Admin product image delete error:", error);
+        return res.status(500).json({ success: false, message: "Ürün görseli silinemedi." });
+    } finally {
+        if (client) client.release();
+    }
+};
+
+exports.deleteProduct = async(req, res) => {
+    const { id } = req.params;
+
+    if (!UUID_PATTERN.test(id)) {
+        return res.status(400).json({ success: false, message: "Geçerli bir ürün kimliği gönderilmelidir." });
+    }
+
+    let client;
+
+    try {
+        client = await pool.connect();
+        await client.query("BEGIN");
+
+        const result = await client.query(
+            "DELETE FROM products WHERE id = $1 RETURNING image_url",
+            [id]
+        );
+
+        if (result.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ success: false, message: "Ürün bulunamadı." });
+        }
+
+        await client.query("COMMIT");
+
+        await removeManagedImage(result.rows[0].image_url).catch((error) => {
+            console.error("Deleted product image cleanup error:", error);
+        });
+
+        return res.json({ success: true, message: "Ürün silindi." });
+    } catch (error) {
+        if (client) await client.query("ROLLBACK").catch(() => {});
+        console.error("Admin product delete error:", error);
+        return res.status(500).json({ success: false, message: "Ürün silinemedi." });
+    } finally {
+        if (client) client.release();
     }
 };
 

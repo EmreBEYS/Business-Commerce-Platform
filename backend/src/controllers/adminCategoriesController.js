@@ -153,6 +153,47 @@ exports.createCategory = async(req, res) => {
     }
 };
 
+exports.deleteCategory = async(req, res) => {
+    const { id } = req.params;
+    if (!UUID_PATTERN.test(id)) {
+        return res.status(400).json({ success: false, message: "Geçerli bir kategori kimliği gönderilmelidir." });
+    }
+
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query("BEGIN");
+        const result = await client.query(
+            `SELECT c.id, c.name,
+                    (SELECT COUNT(*)::integer FROM products p WHERE p.category_id = c.id) AS product_count,
+                    (SELECT COUNT(*)::integer FROM categories child WHERE child.parent_id = c.id) AS child_count
+             FROM categories c WHERE c.id = $1 FOR UPDATE`,
+            [id]
+        );
+        if (!result.rowCount) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ success: false, message: "Kategori bulunamadı." });
+        }
+        const category = result.rows[0];
+        if (category.product_count > 0 || category.child_count > 0) {
+            await client.query("ROLLBACK");
+            return res.status(409).json({
+                success: false,
+                message: "Ürün veya alt kategori içeren kategoriler silinemez. Önce içerikleri taşıyın.",
+            });
+        }
+        await client.query("DELETE FROM categories WHERE id = $1", [id]);
+        await client.query("COMMIT");
+        return res.json({ success: true, message: category.name + " kategorisi silindi." });
+    } catch (error) {
+        if (client) await client.query("ROLLBACK").catch(() => {});
+        console.error("Admin category delete error:", error);
+        return res.status(500).json({ success: false, message: "Kategori silinemedi." });
+    } finally {
+        if (client) client.release();
+    }
+};
+
 exports.updateCategory = async(req, res) => {
     const { id } = req.params;
     if (!UUID_PATTERN.test(id)) {

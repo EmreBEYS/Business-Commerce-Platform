@@ -36,11 +36,9 @@ function AdminDashboard() {
     <div>
       <div className="dashboard-header">
         <div>
-          <span className="dashboard-eyebrow">YÖNETİM PANELİ</span>
-          <h1>Dashboard</h1>
-          <p>
-            Business Commerce Platform genel durumu
-          </p>
+          <span className="dashboard-eyebrow">GENEL BAKIŞ</span>
+          <h1>Kontrol paneli</h1>
+          <p>ServerSatış kataloğunun güncel durumunu takip edin.</p>
         </div>
       </div>
 
@@ -56,28 +54,32 @@ function AdminDashboard() {
 
       {stats && (
         <div className="dashboard-grid">
-          <div className="dashboard-card">
+          <div className="dashboard-card blue">
+            <i>▤</i>
             <span>Toplam Ürün</span>
             <strong>
               {stats.totalProducts.toLocaleString("tr-TR")}
             </strong>
           </div>
 
-          <div className="dashboard-card">
+          <div className="dashboard-card violet">
+            <i>◫</i>
             <span>Toplam Kategori</span>
             <strong>
               {stats.totalCategories.toLocaleString("tr-TR")}
             </strong>
           </div>
 
-          <div className="dashboard-card">
+          <div className="dashboard-card green">
+            <i>✓</i>
             <span>Stokta Olan</span>
             <strong>
               {stats.inStock.toLocaleString("tr-TR")}
             </strong>
           </div>
 
-          <div className="dashboard-card">
+          <div className="dashboard-card amber">
+            <i>!</i>
             <span>Stokta Olmayan</span>
             <strong>
               {stats.outOfStock.toLocaleString("tr-TR")}
@@ -85,6 +87,11 @@ function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <section className="admin-welcome-panel">
+        <div><span>HIZLI BAŞLANGIÇ</span><h2>Kataloğunuzu güncel tutun.</h2><p>Yeni ürün ekleyin, görselleri yönetin ve kategori yapısını düzenleyin.</p></div>
+        <div className="admin-quick-actions"><a href="/admin/products">Ürünleri yönet <span>→</span></a><a href="/admin/categories">Kategorileri düzenle <span>→</span></a></div>
+      </section>
     </div>
   );
 }

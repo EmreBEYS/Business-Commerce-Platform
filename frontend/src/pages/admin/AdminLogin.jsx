@@ -47,41 +47,42 @@ function AdminLogin() {
 
   return (
     <main className="admin-login-page">
-      <form className="admin-login-card" onSubmit={handleSubmit}>
-        <div className="admin-login-header">
-          <span className="admin-badge">Yönetim</span>
-          <h1>Admin Paneli</h1>
-          <p>Devam etmek için yönetici hesabınızla giriş yapın.</p>
+      <section className="admin-login-showcase">
+        <a className="admin-login-brand" href="/"><img src="/serversatis-logo.png" alt="ServerSatış" /></a>
+        <div className="admin-login-message">
+          <span><i /> YÖNETİM MERKEZİ</span>
+          <h1>Kataloğunuzun<br /><em>kontrol merkezi.</em></h1>
+          <p>Ürünleri, kategorileri ve içerikleri güvenli bir panelden yönetin.</p>
+          <div className="admin-login-features"><b>2.700+ ürün</b><b>Güvenli erişim</b><b>3 yönetici</b></div>
         </div>
+        <small>© {new Date().getFullYear()} ServerSatış · Kurumsal teknoloji</small>
+      </section>
+      <section className="admin-login-form-side">
+        <form className="admin-login-card" onSubmit={handleSubmit}>
+          <div className="admin-login-header">
+            <span className="admin-badge">YÖNETİCİ GİRİŞİ</span>
+            <h2>Tekrar hoş geldiniz</h2>
+            <p>Yönetim paneline erişmek için hesabınızla giriş yapın.</p>
+          </div>
 
-        <label>
-          Kullanıcı Adı
-          <input
-            type="text"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            autoComplete="username"
-            required
-          />
-        </label>
+          <label>
+            Kullanıcı adı
+            <span className="admin-input-wrap"><i>♙</i><input type="text" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" placeholder="kullanici.adi" required /></span>
+          </label>
 
-        <label>
-          Şifre
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </label>
+          <label>
+            Şifre
+            <span className="admin-input-wrap"><i>◇</i><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="••••••••••" required /></span>
+          </label>
 
-        {error && <div className="admin-error">{error}</div>}
+          {error && <div className="admin-error">{error}</div>}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
-        </button>
-      </form>
+          <button className="admin-login-submit" type="submit" disabled={loading}>
+            {loading ? "Giriş yapılıyor..." : <>Panele Giriş Yap <span>→</span></>}
+          </button>
+          <p className="admin-login-security"><i>✓</i> Oturumunuz güvenli HTTP-only cookie ile korunur.</p>
+        </form>
+      </section>
     </main>
   );
 }

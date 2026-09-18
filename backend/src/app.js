@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const expressPath = require("node:path");
 
 require("dotenv").config();
 
@@ -12,6 +14,9 @@ const adminAuthRoutes = require("./routes/adminAuth");
 const adminDashboardRoutes = require("./routes/adminDashboard");
 const adminProductsRoutes = require("./routes/adminProducts");
 const adminCategoriesRoutes = require("./routes/adminCategories");
+const adminUsersRoutes = require("./routes/adminUsers");
+const adminAuditRoutes = require("./routes/adminAudit");
+const adminAudit = require("./middleware/adminAudit");
 
 const app = express();
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173,http://127.0.0.1:5173")
@@ -22,6 +27,10 @@ const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173,http:
 // ==============================
 // Middleware
 // ==============================
+
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
 app.use(
     cors({
@@ -41,6 +50,18 @@ app.use(
 
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
+app.use(
+    "/uploads/products",
+    express.static(expressPath.resolve(__dirname, "../uploads/products"), {
+        dotfiles: "deny",
+        fallthrough: true,
+        immutable: true,
+        maxAge: "1y",
+        setHeaders(response) {
+            response.setHeader("X-Content-Type-Options", "nosniff");
+        },
+    })
+);
 
 // ==============================
 // API Routes
@@ -48,10 +69,13 @@ app.use(cookieParser());
 
 app.use("/api/products", productsRouter);
 app.use("/api/categories", categoriesRouter);
+app.use("/api/admin", adminAudit);
 app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/products", adminProductsRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
+app.use("/api/admin/users", adminUsersRoutes);
+app.use("/api/admin/audit", adminAuditRoutes);
 
 // ==============================
 // Health Check

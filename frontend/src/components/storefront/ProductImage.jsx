@@ -1,17 +1,19 @@
 import { useState } from "react";
+import { resolveImageUrl } from "../../lib/catalogApi";
 
 export default function ProductImage({ src, alt, fallback, className }) {
   const [failedSrc, setFailedSrc] = useState(null);
+  const resolvedSrc = resolveImageUrl(src);
 
-  if (!src || failedSrc === src) return fallback;
+  if (!resolvedSrc || failedSrc === resolvedSrc) return fallback;
 
   return (
     <img
       className={className}
-      src={src}
+      src={resolvedSrc}
       alt={alt}
       loading="lazy"
-      onError={() => setFailedSrc(src)}
+      onError={() => setFailedSrc(resolvedSrc)}
     />
   );
 }

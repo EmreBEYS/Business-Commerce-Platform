@@ -95,6 +95,22 @@ function CategoriesPage() {
     }
   };
 
+  const deleteCategory = async (category) => {
+    if (!window.confirm("“" + category.name + "” kategorisini silmek istediğinize emin misiniz? Yalnızca boş kategoriler silinebilir.")) return;
+    setError("");
+    try {
+      const response = await fetch(API_URL + "/api/admin/categories/" + category.id, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || "Kategori silinemedi.");
+      await loadCategories();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
   return (
     <div>
       <div className="admin-page-header">
@@ -120,7 +136,7 @@ function CategoriesPage() {
                   <td>{category.parent_name || "Ana kategori"}</td>
                   <td>{category.path}</td>
                   <td>{category.product_count.toLocaleString("tr-TR")}</td>
-                  <td><button className="edit-product-button" type="button" onClick={() => openEditor(category)}>Düzenle</button></td>
+                  <td><button className="edit-product-button" type="button" onClick={() => openEditor(category)}>Düzenle</button><button className="delete-product-button" type="button" onClick={() => deleteCategory(category)}>Sil</button></td>
                 </tr>
               ))}
               {filteredCategories.length === 0 && <tr><td colSpan="5" className="empty-products">Kategori bulunamadı.</td></tr>}

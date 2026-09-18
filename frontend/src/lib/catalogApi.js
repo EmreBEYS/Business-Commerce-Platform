@@ -1,5 +1,10 @@
 export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+export function resolveImageUrl(value) {
+  if (!value) return "";
+  return value.startsWith("/uploads/products/") ? `${API_URL}${value}` : value;
+}
+
 async function request(path) {
   const response = await fetch(`${API_URL}${path}`);
   if (!response.ok) throw new Error("Katalog verisi şu anda alınamıyor.");

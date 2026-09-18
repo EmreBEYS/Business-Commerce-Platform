@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { API_URL } from "../../lib/catalogApi";
+import { API_URL, resolveImageUrl } from "../../lib/catalogApi";
 
 const stockLabel = (availability) => ({
   IN_STOCK: "Stokta",
@@ -103,6 +103,7 @@ function ProductsPage() {
       imageUrl: product.image_url || "",
       stockQuantity: product.stock_quantity ?? 0,
       categoryId: product.category_id || "",
+      imageFile: null,
     });
   };
 
@@ -116,6 +117,7 @@ function ProductsPage() {
       imageUrl: "",
       stockQuantity: 0,
       categoryId: "",
+      imageFile: null,
     });
   };
 
@@ -125,8 +127,15 @@ function ProductsPage() {
     setError("");
 
     try {
-      const { id, ...fields } = editing;
+      const { id, imageFile, ...fields } = editing;
       const isCreating = !id;
+      const formData = new FormData();
+
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value ?? "");
+      });
+      if (imageFile) formData.append("image", imageFile);
+
       const response = await fetch(
         isCreating
           ? `${API_URL}/api/admin/products`
@@ -134,11 +143,7 @@ function ProductsPage() {
         {
         method: isCreating ? "POST" : "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...fields,
-          stockQuantity: Number(fields.stockQuantity),
-        }),
+        body: formData,
         }
       );
       const data = await response.json();
@@ -166,6 +171,53 @@ function ProductsPage() {
       setError(requestError.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteImage = async () => {
+    if (!editing.id) {
+      setEditing({ ...editing, imageUrl: "", imageFile: null });
+      return;
+    }
+
+    if (!window.confirm("Bu ürün görselini silmek istediğinize emin misiniz?")) return;
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/products/${editing.id}/image`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || "Görsel silinemedi.");
+
+      setProducts((current) => current.map((product) =>
+        product.id === editing.id ? { ...product, image_url: null } : product
+      ));
+      setEditing({ ...editing, imageUrl: "", imageFile: null });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteProduct = async (product) => {
+    if (!window.confirm(`“${product.name}” ürününü kalıcı olarak silmek istediğinize emin misiniz?`)) return;
+
+    setError("");
+    try {
+      const response = await fetch(`${API_URL}/api/admin/products/${product.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || "Ürün silinemedi.");
+      await fetchProducts(pagination.page, search);
+    } catch (requestError) {
+      setError(requestError.message);
     }
   };
 
@@ -243,7 +295,7 @@ function ProductsPage() {
                       <div className="product-table-name">
                         {product.image_url ? (
                           <img
-                            src={product.image_url}
+                            src={resolveImageUrl(product.image_url)}
                             alt=""
                             loading="lazy"
                           />
@@ -281,6 +333,13 @@ function ProductsPage() {
                         onClick={() => openEditor(product)}
                       >
                         Düzenle
+                      </button>
+                      <button
+                        className="delete-product-button"
+                        type="button"
+                        onClick={() => deleteProduct(product)}
+                      >
+                        Sil
                       </button>
                     </td>
                   </tr>
@@ -363,8 +422,28 @@ function ProductsPage() {
             <label>
               Görsel URL veya Yerel Yol
               <input type="text" maxLength="2048" placeholder="/product-images/urun.webp" value={editing.imageUrl} onChange={(event) => setEditing({ ...editing, imageUrl: event.target.value })} />
-              <small>Yerel görselleri public/product-images klasörüne ekleyip /product-images/dosya.webp biçiminde kullanın.</small>
+              <small>Mevcut uzak veya arşiv görsel adresini koruyabilir ya da aşağıdan yeni dosya seçebilirsiniz.</small>
             </label>
+
+            <label className="product-image-upload">
+              Görsel Dosyası
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(event) => setEditing({ ...editing, imageFile: event.target.files[0] || null })}
+              />
+              <small>JPEG, PNG, WebP veya GIF; en fazla 5 MB. Dosya benzersiz bir adla saklanır.</small>
+            </label>
+
+            {(editing.imageUrl || editing.imageFile) && (
+              <div className="product-image-editor">
+                {editing.imageUrl && !editing.imageFile && (
+                  <img src={resolveImageUrl(editing.imageUrl)} alt="Mevcut ürün görseli" />
+                )}
+                <span>{editing.imageFile ? editing.imageFile.name : "Mevcut görsel"}</span>
+                <button type="button" onClick={deleteImage} disabled={saving}>Görseli Sil</button>
+              </div>
+            )}
 
             <label>
               Stok Miktarı
